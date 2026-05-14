@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+
+    "NODE_ENV": "development",
+
+    "AUTH_DEV_MODE": "true",
+    "AZURE_TENANT_ID": "",
+    "AZURE_CLIENT_ID": "",
+    "AZURE_API_AUDIENCE": "",
+
+    "SQL_SERVER": "mysqladelante.database.windows.net",
+    "SQL_DATABASE": ""
+  },
+  "Host": {
+    "CORS": "http://localhost:5173",
+    "CORSCredentials": false
+  }
+}

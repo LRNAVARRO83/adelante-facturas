@@ -1,0 +1,97 @@
+# =============================================================================
+# Deploy — backend a Azure Functions
+# =============================================================================
+# Triggers:
+#   - Push a `main` cuando cambia api/** o shared/**
+#   - Manual desde la UI de GitHub (workflow_dispatch)
+#
+# Pre-requisitos (los configura quien clone este template):
+#   1. Crear un Function App (Node 20, plan Consumption o Flex Consumption).
+#   2. Habilitar Managed Identity en el Function App y darle acceso al Azure SQL
+#      del grupo (mysqladelante) — ver `contexto_arquitectura.md` § 6.2.
+#   3. Configurar variable y secret en GitHub:
+#        Settings → Secrets and variables → Actions
+#        Variable:  AZURE_FUNCTIONAPP_NAME = <nombre del Function App>
+#        Secret:    AZURE_FUNCTIONAPP_PUBLISH_PROFILE = <contenido del .publishsettings>
+#      (El nombre del Function App no es sensible, va en `vars`. El publish
+#      profile contiene credenciales, va en `secrets`.)
+#
+# Estrategia de bundling para monorepo:
+#   - Pre-build de shared y api en el runner.
+#   - Materialización física de `@adelante/shared` dentro de `api/node_modules/`
+#     (necesario porque el zip que sube el action ignora symlinks de workspaces).
+#   - Install de prod deps standalone dentro de api/.
+# =============================================================================
+
+name: Deploy api (Functions)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write  # Reservado para futura migración a OIDC
+
+jobs:
+  build_and_deploy:
+    name: Build y deploy
+    # Skipear cuando el template aún no tiene el Function App configurado
+    if: vars.AZURE_FUNCTIONAPP_NAME != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspaces)
+        run: npm ci
+
+      - name: Build shared
+        run: npm run build --workspace=@adelante/shared
+
+      - name: Build api
+        run: npm run build --workspace=@adelante/api
+
+      # node_modules con workspaces deja `@adelante/shared` como symlink al
+      # workspace, que el zip de Functions no resuelve. Lo materializamos.
+      - name: Materializar @adelante/shared dentro de api/node_modules
+        run: |
+          rm -rf api/node_modules/@adelante/shared
+          mkdir -p api/node_modules/@adelante/shared
+          cp -r shared/dist api/node_modules/@adelante/shared/dist
+          cp shared/package.json api/node_modules/@adelante/shared/package.json
+
+      - name: Reinstalar prod deps de api en modo standalone
+        # Sin workspaces para que las deps queden en api/node_modules y el deploy
+        # no dependa del lockfile del root.
+        run: |
+          cd api
+          npm install --omit=dev --no-package-lock --workspaces=false || true
+
+      - name: Deploy a Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          package: 'api'
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          respect-funcignore: true

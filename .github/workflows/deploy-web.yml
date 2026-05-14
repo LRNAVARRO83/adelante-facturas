@@ -1,0 +1,78 @@
+# =============================================================================
+# Deploy — frontend a Azure Static Web Apps
+# =============================================================================
+# Triggers:
+#   - Push a `main` (deploy automático tras merge)
+#   - Manual desde la UI de GitHub (workflow_dispatch)
+#
+# Pre-requisitos (los configura quien clone este template):
+#   1. Crear un recurso Azure Static Web Apps para la app.
+#   2. Copiar su "Deployment Token" desde el portal de Azure.
+#   3. En GitHub: Settings → Secrets and variables → Actions → New secret
+#         Nombre:  AZURE_STATIC_WEB_APPS_API_TOKEN
+#         Valor:   <token copiado>
+#
+# Build estrategia:
+#   El monorepo usa npm workspaces, así que pre-buildeamos shared + web en el
+#   runner y desactivamos el build interno de Static Web Apps (Oryx no entiende
+#   workspaces). El action solo sube el contenido de `web/dist/`.
+# =============================================================================
+
+name: Deploy web (Static Web Apps)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'shared/**'
+      - 'package-lock.json'
+      - 'package.json'
+      - 'tsconfig.base.json'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: false  # No cancelar deploys en progreso, pueden estar publicando
+
+permissions:
+  contents: read
+  id-token: write  # Reservado para futura migración a OIDC (Federated Credentials)
+
+jobs:
+  build_and_deploy:
+    name: Build y deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared
+        run: npm run build --workspace=@adelante/shared
+
+      - name: Build web
+        run: npm run build --workspace=@adelante/web
+
+      - name: Deploy a Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: 'web'
+          output_location: 'dist'
+          skip_app_build: true  # ya buildeamos arriba, Oryx no maneja workspaces
+          skip_deploy_on_missing_secrets: true  # para que el template no muestre runs rojos

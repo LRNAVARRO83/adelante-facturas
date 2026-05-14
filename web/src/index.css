@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Variables semánticas shadcn/ui mapeadas a la paleta Adelante.
+ *
+ * Formato HSL space-separated (sin wrapper `hsl(...)`) porque los componentes
+ * shadcn las consumen así:  hsl(var(--primary))
+ *
+ * Light-only: este starter NO tiene bloque `.dark` ni media query
+ * prefers-color-scheme. Decisión deliberada del contexto Adelante
+ * (sección 4.2): "Light theme para toda área de trabajo".
+ */
+@layer base {
+  :root {
+    /* Paleta Adelante en HSL space-separated */
+    --background: 0 0% 100%; /* #FFFFFF */
+    --foreground: 0 0% 4%; /* #0A0A0A */
+
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 0 0% 4%; /* #0A0A0A */
+
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 0 0% 4%; /* #0A0A0A */
+
+    --primary: 73 86% 44%; /* #ADD010 verde Adelante */
+    --primary-foreground: 0 0% 4%; /* #0A0A0A */
+
+    --secondary: 0 0% 98%; /* #FAFAFA bg-secondary */
+    --secondary-foreground: 0 0% 4%; /* #0A0A0A */
+
+    --muted: 0 0% 98%; /* #FAFAFA */
+    --muted-foreground: 240 4% 46%; /* #71717A zinc-500 */
+
+    --accent: 0 0% 96%; /* zinc-100 */
+    --accent-foreground: 0 0% 4%; /* #0A0A0A */
+
+    --destructive: 0 84% 60%; /* red-500 */
+    --destructive-foreground: 0 0% 100%; /* #FFFFFF */
+
+    --border: 240 6% 90%; /* #E4E4E7 zinc-200 */
+    --input: 240 6% 90%; /* #E4E4E7 */
+    --ring: 73 86% 44%; /* #ADD010 acento foco */
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: Roboto, system-ui, sans-serif;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  /* Utilidad de uso frecuente: alinear dígitos en columnas numéricas */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}

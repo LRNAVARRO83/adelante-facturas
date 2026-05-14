@@ -1,0 +1,27 @@
+{
+  "name": "adelante-app-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Template oficial de aplicaciones internas del Grupo Adelante. Monorepo TypeScript (shared + api + web) con auth Entra ID, paleta corporativa y andamiaje base.",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "workspaces": ["shared", "api", "web"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm:dev --workspace=@adelante/api\" \"npm:dev --workspace=@adelante/web\"",
+    "build": "npm run build --workspace=@adelante/shared && npm run build --workspace=@adelante/api && npm run build --workspace=@adelante/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "clean": "rimraf -g \"**/node_modules\" -g \"**/dist\" -g \"**/*.tsbuildinfo\"",
+    "postinstall": "node scripts/bootstrap.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "concurrently": "^9.1.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.0"
+  }
+}

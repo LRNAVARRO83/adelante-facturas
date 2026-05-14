@@ -1,0 +1,60 @@
+# =============================================================================
+# CI — validación en cada push y PR
+# =============================================================================
+# Corre typecheck, lint y build de los 3 workspaces (shared, api, web).
+# No requiere secrets — funciona apenas se conecte el repo a GitHub.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches-ignore: []
+  pull_request:
+    branches: [main]
+
+# Cancelar runs previas del mismo ref para no acumular builds inútiles
+# cuando se hacen pushes seguidos.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Typecheck, lint, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build @adelante/shared
+        # Necesario antes del typecheck/build de api y web para que el package
+        # esté disponible vía npm workspaces resolution.
+        run: npm run build --workspace=@adelante/shared
+
+      - name: Typecheck (todos los workspaces)
+        run: npm run typecheck
+
+      - name: Lint (Biome)
+        run: npm run lint
+
+      - name: Build @adelante/api
+        run: npm run build --workspace=@adelante/api
+
+      - name: Build @adelante/web
+        run: npm run build --workspace=@adelante/web
